@@ -1,9 +1,17 @@
 import tensorflow as tf
 import numpy as np
+# new!
+import keras
+from tensorflow.keras import Model
+from tensorflow.keras.applications.vgg19 import VGG19 
+from keras import backend as K
+
+# from keras.backend.tensorflow_backend import set_session
+#-----
 # vgg19 from keras
-from tensorflow.contrib.keras.api.keras.models import Model
-from tensorflow.contrib.keras.api.keras.applications.vgg19 import VGG19
-from tensorflow.contrib.keras.api.keras import backend as K
+# from tensorflow.contrib.keras.api.keras.models import Model
+# from tensorflow.contrib.keras.api.keras.applications.vgg19 import VGG19
+# from tensorflow.contrib.keras.api.keras import backend as K
 
 
 def preprocess_input(x):
@@ -25,7 +33,10 @@ def preprocess_input(x):
 class VGG19Features(object):
     def __init__(self, session,
             feature_layers = None, feature_weights = None, gram_weights = None):
-        K.set_session(session)
+        # K.set_session(session)
+        # new code!!!
+        tf.compat.v1.keras.backend.set_session(session);
+        # ---------
         self.base_model = VGG19(
                 include_top = False,
                 weights='imagenet')
