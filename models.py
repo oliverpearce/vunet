@@ -1,5 +1,10 @@
 import tensorflow as tf
-from tensorflow.contrib.framework.python.ops import arg_scope
+# from tensorflow.contrib.framework.python.ops import arg_scope
+# new code
+import tf_slim as slim
+from tf_slim import add_arg_scope
+from tf_slim import arg_scope
+#---------------
 import nn
 
 
@@ -15,7 +20,7 @@ def model_arg_scope(**kwargs):
 def make_model(name, template, **kwargs):
     """Create model with fixed kwargs."""
     run = lambda *args, **kw: template(*args, **dict((k, v) for kws in (kw, kwargs) for k, v in kws.items()))
-    return tf.make_template(name, run, unique_name_ = name)
+    return tf.compat.v1.make_template(name, run, unique_name_ = name)
 
 
 def dec_up(
@@ -77,7 +82,7 @@ def dec_down(
                         z_posterior_groups = nn.split_groups(zs_posterior[0])
                     p_groups = []
                     z_groups = []
-                    p_features = tf.space_to_depth(nn.residual_block(h), 2)
+                    p_features = tf.nn.space_to_depth(nn.residual_block(h), 2)
                     for i in range(4):
                         p_group = latent_parameters(p_features, num_filters = n_h_channels)
                         p_groups.append(p_group)
@@ -210,7 +215,7 @@ def latent_parameters(
 def latent_sample(p):
     mean = p
     stddev = 1.0
-    eps = tf.random_normal(mean.shape, mean = 0.0, stddev = 1.0)
+    eps = tf.random.normal(mean.shape, mean = 0.0, stddev = 1.0)
     return mean + stddev * eps
 
 
