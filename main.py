@@ -1,7 +1,12 @@
+# import tensorflow as tf
+# new code!
 import tensorflow as tf
-config = tf.ConfigProto()
+tf.compat.v1.disable_v2_behavior()
+from tensorflow.compat.v1 import make_template as make_template
+# ----------------
+config = tf.compat.v1.ConfigProto()
 config.gpu_options.allow_growth = False
-session = tf.Session(config = config)
+session = tf.compat.v1.Session(config = config)
 
 import os, logging, shutil, datetime
 import glob
@@ -160,16 +165,16 @@ class Model(object):
                 1e-6, 1.0)
 
         # initialization
-        self.x_init = tf.placeholder(
+        self.x_init = tf.compat.v1.placeholder(
                 tf.float32,
                 shape = [self.init_batches * self.batch_size] + self.img_shape)
-        self.c_init = tf.placeholder(
+        self.c_init = tf.compat.v1.placeholder(
                 tf.float32,
                 shape = [self.init_batches * self.batch_size] + self.img_shape)
-        self.xn_init = tf.placeholder(
+        self.xn_init = tf.compat.v1.placeholder(
                 tf.float32,
                 shape = [self.init_batches * self.batch_size] + self.imgn_shape)
-        self.cn_init = tf.placeholder(
+        self.cn_init = tf.compat.v1.placeholder(
                 tf.float32,
                 shape = [self.init_batches * self.batch_size] + self.imgn_shape)
         self.dd_init_op = self.train_forward_pass(
@@ -178,16 +183,16 @@ class Model(object):
                 dropout_p = self.dropout_p, init = True)
 
         # training
-        self.x = tf.placeholder(
+        self.x = tf.compat.v1.placeholder(
                 tf.float32,
                 shape = [self.batch_size] + self.img_shape)
-        self.c = tf.placeholder(
+        self.c = tf.compat.v1.placeholder(
                 tf.float32,
                 shape = [self.batch_size] + self.img_shape)
-        self.xn = tf.placeholder(
+        self.xn = tf.compat.v1.placeholder(
                 tf.float32,
                 shape = [self.batch_size] + self.imgn_shape)
-        self.cn = tf.placeholder(
+        self.cn = tf.compat.v1.placeholder(
                 tf.float32,
                 shape = [self.batch_size] + self.imgn_shape)
         # compute parameters of model distribution
@@ -199,7 +204,7 @@ class Model(object):
         sample = self.sample(params)
         # maximize likelihood
         likelihood_loss = self.likelihood_loss(self.x, params)
-        kl_loss = tf.to_float(0.0)
+        kl_loss = tf.cast(0.0, dtype=tf.float32)
         for q, p in zip(qs, ps):
             self.logger.info("Latent shape: {}".format(q.shape.as_list()))
             kl_loss += models.latent_kl(q, p)
@@ -217,12 +222,12 @@ class Model(object):
         self.reconstruction = self.sample(reconstruction_params)
 
         # optimization
-        self.trainable_variables = [v for v in tf.trainable_variables()
+        self.trainable_variables = [v for v in tf.compat.v1.trainable_variables()
                 if not v in self.vgg19.variables]
-        optimizer = tf.train.AdamOptimizer(learning_rate = lr, beta1 = 0.5, beta2 = 0.9)
+        optimizer = tf.compat.v1.train.AdamOptimizer(learning_rate = lr, beta1 = 0.5, beta2 = 0.9)
         opt_op = optimizer.minimize(loss, var_list = self.trainable_variables)
         with tf.control_dependencies([opt_op]):
-            self.train_op = tf.assign(global_step, global_step + 1)
+            self.train_op = tf.compat.v1.assign(global_step, global_step + 1)
 
 
         # logging and visualization
@@ -244,27 +249,27 @@ class Model(object):
         # only training summary contains histograms
         train_summaries = list()
         for k, v in self.log_ops.items():
-            train_summaries.append(tf.summary.scalar(k, v))
-        self.train_summary_op = tf.summary.merge_all()
+            train_summaries.append(tf.compat.v1.summary.scalar(k, v))
+        self.train_summary_op = tf.compat.v1.summary.merge_all()
 
         valid_summaries = list()
         for k, v in self.log_ops.items():
-            valid_summaries.append(tf.summary.scalar(k+"_valid", v))
-        self.valid_summary_op = tf.summary.merge(valid_summaries)
+            valid_summaries.append(tf.compat.v1.summary.scalar(k+"_valid", v))
+        self.valid_summary_op = tf.compat.v1.summary.merge(valid_summaries)
 
         # all variables for initialization
-        self.variables = [v for v in tf.global_variables()
+        self.variables = [v for v in tf.compat.v1.global_variables()
                 if not v in self.vgg19.variables]
 
         self.logger.info("Defined graph")
 
 
     def init_graph(self, init_batch):
-        self.writer = tf.summary.FileWriter(
+        self.writer = tf.compat.v1.summary.FileWriter(
                 self.out_dir,
                 session.graph)
-        self.saver = tf.train.Saver(self.variables)
-        initializer_op = tf.variables_initializer(self.variables)
+        self.saver = tf.compat.v1.train.Saver(self.variables)
+        initializer_op = tf.compat.v1.variables_initializer(self.variables)
         feed = {
             self.xn_init: init_batch[2],
             self.cn_init: init_batch[3],
@@ -276,16 +281,16 @@ class Model(object):
 
 
     def restore_graph(self, restore_path):
-        self.writer = tf.summary.FileWriter(
+        self.writer = tf.compat.v1.summary.FileWriter(
                 self.out_dir,
                 session.graph)
-        self.saver = tf.train.Saver(self.variables)
+        self.saver = tf.compat.v1.train.Saver(self.variables)
         self.saver.restore(session, restore_path)
         self.logger.info("Restored model from {}".format(restore_path))
 
 
     def reset_global_step(self):
-        session.run(tf.assign(self.log_ops["global_step"], 0))
+        session.run(tf.compat.v1.assign(self.log_ops["global_step"], 0))
         self.logger.info("Reset global_step")
 
 
@@ -414,7 +419,7 @@ class Model(object):
         initialized = getattr(self, "_init_transfer", False)
         if not initialized:
             # transfer
-            self.c_generator = tf.placeholder(
+            self.c_generator = tf.compat.v1.placeholder(
                     tf.float32,
                     shape = [self.batch_size] + self.img_shape)
             infer_x = self.xn
@@ -446,7 +451,8 @@ if __name__ == "__main__":
     opt = parser.parse_args()
 
     with open(opt.config) as f:
-        config = yaml.load(f)
+        # config = yaml.load(f)
+        config = yaml.load(f, Loader=yaml.Loader)
 
     out_dir, logger = init_logging(opt.log_dir)
     logger.info(opt)
