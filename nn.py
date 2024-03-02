@@ -5,8 +5,11 @@ Various tensorflow utilities
 
 import numpy as np
 import tensorflow as tf
-from tensorflow.contrib.framework.python.ops import add_arg_scope
-
+# from tensorflow.contrib.framework.python.ops import add_arg_scope
+# new code
+import tf_slim as slim
+from tf_slim import add_arg_scope
+#---------------
 
 def int_shape(x):
     return x.shape.as_list()
@@ -25,18 +28,18 @@ def get_name(layer_name, counters):
 def dense(x, num_units, init_scale=1., counters={}, init=False, **kwargs):
     ''' fully connected layer '''
     name = get_name('dense', counters)
-    with tf.variable_scope(name):
+    with tf.compat.v1.variable_scope(name):
         xs = x.shape.as_list()
-        V = tf.get_variable('V', [xs[1], num_units], tf.float32, tf.random_normal_initializer(0, 0.05))
-        g = tf.get_variable('g', [num_units], dtype=tf.float32, initializer=tf.constant_initializer(1.))
-        b = tf.get_variable('b', [num_units], dtype=tf.float32, initializer=tf.constant_initializer(0.))
+        V = tf.compat.v1.get_variable('V', [xs[1], num_units], tf.float32, tf.compat.v1.random_normal_initializer(0, 0.05))
+        g = tf.compat.v1.get_variable('g', [num_units], dtype=tf.float32, initializer=tf.compat.v1.constant_initializer(1.))
+        b = tf.compat.v1.get_variable('b', [num_units], dtype=tf.float32, initializer=tf.compat.v1.constant_initializer(0.))
 
         V_norm = tf.nn.l2_normalize(V, [0])
         x = tf.matmul(x, V_norm)
         if init:
             mean, var = tf.nn.moments(x, [0])
-            g = tf.assign(g, init_scale / tf.sqrt(var + 1e-10))
-            b = tf.assign(b, -mean * g)
+            g = tf.compat.v1.assign(g, init_scale / tf.sqrt(var + 1e-10))
+            b = tf.compat.v1.assign(b, -mean * g)
         x = tf.reshape(g, [1, num_units])*x + tf.reshape(b, [1, num_units])
 
         return x
@@ -48,19 +51,19 @@ def conv2d(x, num_filters, filter_size=[3, 3], stride=[1, 1], pad='SAME', init_s
     num_filters = int(num_filters)
     strides = [1] + stride + [1]
     name = get_name('conv2d', counters)
-    with tf.variable_scope(name):
+    with tf.compat.v1.variable_scope(name):
         xs = x.shape.as_list()
-        V = tf.get_variable('V', filter_size + [xs[-1], num_filters],
-                            tf.float32, tf.random_normal_initializer(0, 0.05))
-        g = tf.get_variable('g', [num_filters], dtype=tf.float32, initializer=tf.constant_initializer(1.))
-        b = tf.get_variable('b', [num_filters], dtype=tf.float32, initializer=tf.constant_initializer(0.))
+        V = tf.compat.v1.get_variable('V', filter_size + [xs[-1], num_filters],
+                            tf.float32, tf.compat.v1.random_normal_initializer(0, 0.05))
+        g = tf.compat.v1.get_variable('g', [num_filters], dtype=tf.float32, initializer=tf.compat.v1.constant_initializer(1.))
+        b = tf.compat.v1.get_variable('b', [num_filters], dtype=tf.float32, initializer=tf.compat.v1.constant_initializer(0.))
 
         V_norm = tf.nn.l2_normalize(V, [0,1,2])
-        x = tf.nn.conv2d(x, V_norm, [1] + stride + [1], pad)
+        x = tf.nn.conv2d(x, filters=V_norm, strides=[1] + stride + [1], padding=pad)
         if init:
             mean, var = tf.nn.moments(x, [0,1,2])
-            g = tf.assign(g, init_scale / tf.sqrt(var + 1e-10))
-            b = tf.assign(b, -mean * g)
+            g = tf.compat.v1.assign(g, init_scale / tf.sqrt(var + 1e-10))
+            b = tf.compat.v1.assign(b, -mean * g)
         x = tf.reshape(g, [1, 1, 1, num_filters])*x + tf.reshape(b, [1, 1, 1, num_filters])
 
         return x
@@ -79,20 +82,20 @@ def deconv2d(x, num_filters, filter_size=[3, 3], stride=[1, 1], pad='SAME', init
     else:
         target_shape = [xs[0], xs[1] * stride[0] + filter_size[0] -
                         1, xs[2] * stride[1] + filter_size[1] - 1, num_filters]
-    with tf.variable_scope(name):
-        V = tf.get_variable('V',
+    with tf.compat.v1.variable_scope(name):
+        V = tf.compat.v1.get_variable('V',
                 filter_size + [num_filters, xs[-1]],
                 tf.float32,
-                tf.random_normal_initializer(0, 0.05))
-        g = tf.get_variable('g', [num_filters], dtype=tf.float32, initializer=tf.constant_initializer(1.))
-        b = tf.get_variable('b', [num_filters], dtype=tf.float32, initializer=tf.constant_initializer(0.))
+                tf.compat.v1.random_normal_initializer(0, 0.05))
+        g = tf.compat.v1.get_variable('g', [num_filters], dtype=tf.float32, initializer=tf.compat.v1.constant_initializer(1.))
+        b = tf.compat.v1.get_variable('b', [num_filters], dtype=tf.float32, initializer=tf.compat.v1.constant_initializer(0.))
 
         V_norm = tf.nn.l2_normalize(V, [0,1,3])
         x = tf.nn.conv2d_transpose(x, V_norm, target_shape, [1] + stride + [1], pad)
         if init:
             mean, var = tf.nn.moments(x, [0,1,2])
-            g = tf.assign(g, init_scale / tf.sqrt(var + 1e-10))
-            b = tf.assign(b, -mean * g)
+            g = tf.compat.v1.assign(g, init_scale / tf.sqrt(var + 1e-10))
+            b = tf.compat.v1.assign(b, -mean * g)
         x = tf.reshape(g, [1, 1, 1, num_filters])*x + tf.reshape(b, [1, 1, 1, num_filters])
 
         return x
@@ -125,7 +128,7 @@ def upsample(x, num_units, method = "subpixel"):
         return deconv2d(x, num_units, stride = [2, 2])
     elif method == "subpixel":
         x = conv2d(x, 4*num_units)
-        x = tf.depth_to_space(x, 2)
+        x = tf.nn.depth_to_space(x, 2)
         return x
 
 
@@ -140,11 +143,11 @@ def residual_block(x, a = None, conv=conv2d, init=False, dropout_p=0.0, gated = 
         a = nin(activate(a), num_filters)
         residual = tf.concat([residual, a], axis = -1)
     residual = activate(residual)
-    residual = tf.nn.dropout(residual, keep_prob = 1.0 - dropout_p)
+    residual = tf.nn.dropout(residual, rate = 1 - (1.0 - dropout_p))
     residual = conv(residual, num_filters)
     if gated:
         residual = activate(residual)
-        residual = tf.nn.dropout(residual, keep_prob = 1.0 - dropout_p)
+        residual = tf.nn.dropout(residual, rate = 1 - (1.0 - dropout_p))
         residual = conv(residual, 2*num_filters)
         a, b = tf.split(residual, 2, 3)
         residual = a * tf.nn.sigmoid(b)
@@ -167,8 +170,8 @@ def make_linear_var(
 
 
 def split_groups(x, bs = 2):
-    return tf.split(tf.space_to_depth(x, bs), bs**2, axis = 3)
+    return tf.split(tf.nn.space_to_depth(x, bs), bs**2, axis = 3)
 
 
 def merge_groups(xs, bs = 2):
-    return tf.depth_to_space(tf.concat(xs, axis = 3), bs)
+    return tf.nn.depth_to_space(tf.concat(xs, axis = 3), bs)
